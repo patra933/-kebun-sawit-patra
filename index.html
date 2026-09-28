@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#166534"><link rel="manifest" href="manifest.json">
+<title>Kebun Sawit Patra</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#f4f7f4;color:#17351f}
+header{background:#166534;color:white;padding:24px 18px 18px;border-radius:0 0 24px 24px}h1{margin:0;font-size:24px}small{opacity:.85}
+main{padding:14px;max-width:900px;margin:auto}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.card{background:white;border-radius:16px;padding:15px;box-shadow:0 2px 10px #0000000d;margin-bottom:12px}
+.kpi{font-size:22px;font-weight:800;margin-top:5px}.muted{color:#6b7c70;font-size:13px}
+nav{position:sticky;bottom:0;background:#fff;border-top:1px solid #ddd;display:grid;grid-template-columns:repeat(4,1fr);padding:8px;z-index:5}
+nav button{border:0;background:none;padding:8px 3px;color:#526357;font-size:12px}nav button.active{color:#166534;font-weight:800}
+section{display:none}section.active{display:block}
+button.primary{background:#166534;color:#fff;border:0;border-radius:12px;padding:12px 15px;font-weight:700}
+input,select{width:100%;padding:11px;border:1px solid #ccd8ce;border-radius:10px;margin:5px 0 10px;background:#fff}
+label{font-size:13px;font-weight:650}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.list{border-top:1px solid #edf0ed;padding:10px 0}.money{font-weight:800}
+textarea{width:100%;min-height:80px;border:1px solid #ccd8ce;border-radius:10px;padding:10px}
+canvas{width:100%;height:180px;background:#fff;border-radius:12px}
+.badge{display:inline-block;padding:5px 9px;border-radius:99px;background:#e7f5ea;color:#166534;font-size:12px}
+</style></head>
+<body>
+<header><h1>🌴 Kebun Sawit Patra</h1><small>Asisten manajemen kebun pribadi</small></header>
+<main>
+<section id="home" class="active">
+<div class="grid">
+<div class="card"><div class="muted">Luas kebun</div><div class="kpi">16 ha</div></div>
+<div class="card"><div class="muted">Total pohon</div><div class="kpi">1.850</div></div>
+<div class="card"><div class="muted">Produksi bulan ini</div><div class="kpi" id="prod">0 kg</div></div>
+<div class="card"><div class="muted">Saldo bersih</div><div class="kpi" id="saldo">Rp0</div></div>
+</div>
+<div class="card"><span class="badge">Data awal</span><p>300 pohon umur 3 tahun · 950 pohon umur 8–9 tahun · 600 pohon umur 11 tahun.</p></div>
+<div class="card"><b>📈 Produksi</b><canvas id="chart"></canvas></div>
+</section>
+
+<section id="panen">
+<div class="card"><h3>🧺 Catat Panen</h3>
+<label>Tanggal</label><input id="pt" type="date">
+<label>Berat TBS (kg)</label><input id="pk" type="number" placeholder="10000">
+<label>Harga/kg (Rp)</label><input id="ph" type="number" placeholder="3200">
+<label>Blok / keterangan</label><input id="pb" placeholder="Blok A">
+<button class="primary" onclick="addHarvest()">Simpan Panen</button></div>
+<div class="card"><h3>Riwayat</h3><div id="harvestList"></div></div>
+</section>
+
+<section id="uang">
+<div class="card"><h3>💰 Catat Keuangan</h3>
+<label>Jenis</label><select id="ut"><option value="in">Pemasukan</option><option value="out">Pengeluaran</option></select>
+<label>Nominal (Rp)</label><input id="un" type="number">
+<label>Keterangan</label><input id="uk" placeholder="Pupuk / upah / penjualan TBS">
+<button class="primary" onclick="addMoney()">Simpan</button></div>
+<div class="card"><h3>Ringkasan</h3><div id="moneySummary"></div><div id="moneyList"></div></div>
+</section>
+
+<section id="lain">
+<div class="card"><h3>🌱 Stok Pupuk</h3>
+<div class="row"><div><label>Nama</label><input id="fn" placeholder="MOP"></div><div><label>Karung</label><input id="fq" type="number"></div></div>
+<button class="primary" onclick="addFertilizer()">Tambah Stok</button><div id="fertList"></div></div>
+<div class="card"><h3>🤖 Asisten Sawit</h3>
+<textarea id="ask" placeholder='Contoh: "Hari ini panen 10 ton harga 3200"'></textarea>
+<button class="primary" onclick="assistant()">Proses</button><p id="answer" class="muted"></p></div>
+<div class="card"><h3>🔔 Pengingat</h3><input id="rem" placeholder="Contoh: Pemupukan MOP"><input id="rd" type="date"><button class="primary" onclick="addReminder()">Tambah Pengingat</button><div id="remList"></div></div>
+</section>
+</main>
+<nav>
+<button class="active" onclick="show('home',this)">🏠<br>Beranda</button>
+<button onclick="show('panen',this)">🧺<br>Panen</button>
+<button onclick="show('uang',this)">💰<br>Keuangan</button>
+<button onclick="show('lain',this)">🌱<br>Lainnya</button>
+</nav>
+<script>
+const K='ksp_v1';
+let d=JSON.parse(localStorage.getItem(K)||'{"harvest":[],"money":[],"fert":[],"rem":[]}');
+const save=()=>localStorage.setItem(K,JSON.stringify(d));
+const rp=n=>'Rp'+Number(n||0).toLocaleString('id-ID');
+function show(id,b){document.querySelectorAll('section').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');render();}
+function addHarvest(){let kg=+pk.value||0,h=+ph.value||0;if(!kg||!h)return alert('Isi berat dan harga.');d.harvest.unshift({date:pt.value||new Date().toISOString().slice(0,10),kg,h,block:pb.value});d.money.unshift({type:'in',amount:kg*h,note:'Penjualan TBS',date:pt.value||new Date().toISOString().slice(0,10)});save();render();alert('Panen tersimpan.');}
+function addMoney(){let amount=+un.value||0;if(!amount)return;d.money.unshift({type:ut.value,amount,note:uk.value,date:new Date().toISOString().slice(0,10)});save();render();}
+function addFertilizer(){let q=+fq.value||0;if(!fn.value||!q)return;d.fert.unshift({name:fn.value,q});save();render();}
+function addReminder(){if(!rem.value)return;d.rem.unshift({text:rem.value,date:rd.value});save();render();}
+function assistant(){let s=ask.value.toLowerCase(),m=s.match(/panen\s+([\d.,]+)\s*(ton|kg).*?harga\s+([\d.,]+)/);if(m){let kg=parseFloat(m[1].replace(',','.'))*(m[2]=='ton'?1000:1),h=parseFloat(m[3].replace(/[.,]/g,''));pk.value=kg;ph.value=h;answer.textContent=`Saya menemukan panen ${kg.toLocaleString('id-ID')} kg dengan harga ${rp(h)}/kg. Tekan "Simpan Panen" di menu Panen.`;}else answer.textContent='Untuk versi awal, gunakan format: “panen 10 ton harga 3200”.';}
+function render(){
+let prod=d.harvest.reduce((a,x)=>a+x.kg,0), inc=d.money.filter(x=>x.type=='in').reduce((a,x)=>a+x.amount,0),out=d.money.filter(x=>x.type=='out').reduce((a,x)=>a+x.amount,0);
+document.getElementById('prod').textContent=prod.toLocaleString('id-ID')+' kg';document.getElementById('saldo').textContent=rp(inc-out);
+harvestList.innerHTML=d.harvest.map(x=>`<div class=list>${x.date} · <b>${x.kg.toLocaleString('id-ID')} kg</b> · ${rp(x.h)}/kg<br><span class=muted>${x.block||''}</span></div>`).join('')||'<span class=muted>Belum ada data.</span>';
+moneySummary.innerHTML=`Pemasukan: <b>${rp(inc)}</b> · Pengeluaran: <b>${rp(out)}</b> · Saldo: <b>${rp(inc-out)}</b>`;
+moneyList.innerHTML=d.money.slice(0,10).map(x=>`<div class=list>${x.date} · ${x.type=='in'?'➕':'➖'} <span class=money>${rp(x.amount)}</span> · ${x.note||''}</div>`).join('');
+fertList.innerHTML=d.fert.map(x=>`<div class=list>${x.name} — <b>${x.q} karung</b></div>`).join('')||'<span class=muted>Belum ada stok.</span>';
+remList.innerHTML=d.rem.map(x=>`<div class=list>🔔 ${x.date||'-'} · ${x.text}</div>`).join('')||'<span class=muted>Belum ada pengingat.</span>';
+draw(prod);
+}
+function draw(prod){let c=document.getElementById('chart'),ctx=c.getContext('2d'),w=c.width=c.clientWidth*2,h=c.height=c.clientHeight*2;ctx.scale(2,2);let W=c.clientWidth,H=c.clientHeight;ctx.clearRect(0,0,W,H);let vals=d.harvest.slice(0,8).reverse().map(x=>x.kg),mx=Math.max(1,...vals),bw=Math.max(12,(W-30)/Math.max(1,vals.length)-8);vals.forEach((v,i)=>{let bh=v/mx*(H-35);ctx.fillStyle='#3b8f4a';ctx.fillRect(15+i*(bw+8),H-bh-18,bw,bh)});ctx.fillStyle='#6b7c70';ctx.font='11px system-ui';ctx.fillText('Panen terakhir',15,H-4)}
+pt.value=new Date().toISOString().slice(0,10);rd.value=pt.value;render();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script></body></html>
